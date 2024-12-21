@@ -1,0 +1,21 @@
+api_user: "your_api_user"          # Your Namecheap API user
+api_key: "your_api_key"            # Your Namecheap API key
+username: "your_namecheap_username"  # Your Namecheap username
+client_ip: "your_client_ip"        # Your whitelisted client IP
+
+domain_sld: "example"              # SLD of the domain (e.g., 'example' for example.com)
+domain_tld: "com"                  # TLD of the domain (e.g., 'com' for example.com)
+
+new_dns_records:
+  - Name: "test1"
+    Type: "A"
+    Address: "192.0.2.1"
+    TTL: 300
+  - Name: "test2"
+    Type: "CNAME"
+    Address: "example.com"
+    TTL: 600
+  - Name: "test3"
+    Type: "TXT"
+    Address: "verification_code"
+    TTL: 3600

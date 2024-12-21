@@ -1,0 +1,70 @@
+---
+- name: Retrieve current DNS records from Namecheap
+  uri:
+    url: "https://api.namecheap.com/xml.response"
+    method: GET
+    return_content: yes
+    body_format: form-urlencoded
+    headers:
+      Content-Type: application/x-www-form-urlencoded
+    body:
+      ApiUser: "{{ api_user }}"
+      ApiKey: "{{ api_key }}"
+      UserName: "{{ username }}"
+      ClientIp: "{{ client_ip }}"
+      Command: "namecheap.domains.dns.getHosts"
+      SLD: "{{ domain_sld }}"
+      TLD: "{{ domain_tld }}"
+  register: dns_records_response
+
+- name: Parse and extract DNS records
+  xml:
+    xmlstring: "{{ dns_records_response.content }}"
+    xpath: "/nc:ApiResponse/nc:CommandResponse/nc:DomainDNSGetHostsResult/nc:host"
+    namespaces:
+      nc: "http://api.namecheap.com/xml.response"
+    content: attribute
+  register: parsed_dns_records
+
+- name: Debug parsed DNS records
+  debug:
+    var: parsed_dns_records.matches
+
+- name: Combine existing and new DNS records
+  set_fact:
+    all_dns_records: >-
+      {{
+        (parsed_dns_records.matches | json_query('[*]."{http://api.namecheap.com/xml.response}host"'))
+        + new_dns_records
+      }}
+
+- name: Debug combined DNS records
+  debug:
+    var: all_dns_records
+
+- name: Construct the body for all DNS records
+  set_fact:
+    dns_request_body: >-
+      ApiUser={{ api_user }}&ApiKey={{ api_key }}&UserName={{ username }}&ClientIp={{ client_ip }}&Command=namecheap.domains.dns.setHosts&SLD={{ domain_sld }}&TLD={{ domain_tld }}
+      {% for record in all_dns_records %}
+      &HostName{{ loop.index }}={{ record.Name }}&RecordType{{ loop.index }}={{ record.Type }}&Address{{ loop.index }}={{ record.Address }}&TTL{{ loop.index }}={{ record.TTL }}
+      {% endfor %}
+
+- name: Debug the constructed body
+  debug:
+    var: dns_request_body
+
+- name: Update DNS records on Namecheap
+  uri:
+    url: "https://api.namecheap.com/xml.response"
+    method: POST
+    return_content: yes
+    body_format: form-urlencoded
+    headers:
+      Content-Type: application/x-www-form-urlencoded
+    body: "{{ dns_request_body }}"
+  register: update_dns_response
+
+- name: Debug response from updating DNS records
+  debug:
+    var: update_dns_response
